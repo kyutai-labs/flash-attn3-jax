@@ -246,7 +246,7 @@ def flash_mha(q, k, v, softmax_scale=None, is_causal=False, window_size=(-1, -1)
     """Flash attention.
 
     softmax_scale defaults to 1/sqrt(d) and must be a python float if
-    provided (ie. can't be a tensor or a tracer).0
+    provided (ie. can't be a tensor or a tracer).
 
     """
     assert len(q.shape) == 4
