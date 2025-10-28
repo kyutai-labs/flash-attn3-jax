@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 from jax.sharding import Mesh, NamedSharding
 from jax.sharding import PartitionSpec as P
-from jax.tree_util import tree_map
 
 jax.config.update("jax_traceback_filtering", "off")
 jax.config.update("jax_default_matmul_precision", "highest")
@@ -14,28 +13,7 @@ jax.config.update("jax_default_matmul_precision", "highest")
 from flash_attn3_jax import flash_mha
 
 from .ref_mha import ref_mha
-
-
-def pretty(tensor):
-    shape = tensor.shape
-    mx = jnp.max(tensor)
-    mn = jnp.min(tensor)
-    mean = jnp.mean(tensor)
-    std = jnp.std(tensor)
-    return f"[{shape}: {mn:.3g} | {mean:.3g}±{std:.3g} | {mx:.3g}]"
-
-
-def check(ref_out, jax_out, out, eps=3):
-    def check1(ref_out, jax_out, out):
-        out_diff = jnp.abs(out - ref_out)
-        jax_diff = jnp.abs(jax_out - ref_out)
-        assert jnp.max(out_diff) <= eps * jnp.max(jax_diff), (
-            pretty(out_diff),
-            "vs",
-            pretty(jax_diff),
-        )
-
-    tree_map(check1, ref_out, jax_out, out)
+from .test_utils import check
 
 
 @pytest.mark.skipif(len(jax.local_devices()) < 2, reason="Requires >1 gpu device")
@@ -195,7 +173,7 @@ def test_flash_fwd_sharded(seqlen, h, d, m, causal, local, dtype):
     def check_sharding(sharding, q, k, v):
         (q, k, v) = jax.device_put((q, k, v), sharding)
         out = flash((q, k, v))
-        check(ref_out, ref16_out, out)
+        check(ref_out, ref16_out, out, margin=3)
 
     check_sharding(NamedSharding(mesh, P(None, None, None, None)), q, k, v)
     check_sharding(NamedSharding(mesh, P("x", None, None, None)), q, k, v)
@@ -259,7 +237,7 @@ def test_flash_bwd_sharded(seqlen, h, d, m, causal, local, dtype):
     def check_sharding(sharding):
         (qs, ks, vs, dos) = jax.device_put((q, k, v, do), sharding)
         out = flash((qs, ks, vs), dos)
-        check(ref_out, ref16_out, out, eps=4)
+        check(ref_out, ref16_out, out, margin=4)
 
     check_sharding(NamedSharding(mesh, P("x", None, None, None)))
     check_sharding(NamedSharding(mesh, P(None, None, "x", None)))

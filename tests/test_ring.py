@@ -11,21 +11,13 @@ from jax.sharding import PartitionSpec as P
 
 jax.config.update("jax_default_matmul_precision", "highest")
 
-
-# Check if GPU is available
-def has_gpu():
-    try:
-        return len(jax.devices("gpu")) > 0
-    except:
-        return False
-
-
-if not has_gpu():
-    pytest.skip("GPU required for flash attention tests", allow_module_level=True)
-
 from flash_attn3_jax.ring_attention import ring_bwd, ring_fwd
 
 from .ref_mha import ref_bwd, ref_fwd
+from .test_utils import has_gpu
+
+if not has_gpu():
+    pytest.skip("GPU required for flash attention tests", allow_module_level=True)
 
 
 def test_ref_bwd():

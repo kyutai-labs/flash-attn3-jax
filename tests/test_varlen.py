@@ -10,40 +10,10 @@ jax.config.update("jax_default_matmul_precision", "highest")
 from flash_attn3_jax.varlen import flash_mha_varlen
 
 from .ref_mha import ref_mha
-
-
-# Check if GPU is available
-def has_gpu():
-    try:
-        return len(jax.devices("gpu")) > 0
-    except:
-        return False
-
+from .test_utils import check, has_gpu
 
 if not has_gpu():
     pytest.skip("GPU required for flash attention tests", allow_module_level=True)
-
-
-def pretty(tensor):
-    shape = tensor.shape
-    mx = jnp.max(tensor)
-    mn = jnp.min(tensor)
-    mean = jnp.mean(tensor)
-    std = jnp.std(tensor)
-    return f"[{shape}: {mn:.3g} | {mean:.3g}±{std:.3g} | {mx:.3g}]"
-
-
-# Smart idea from Tri Dao's repo: compare both impl to a float32
-# reference impl, and call it a pass if the absolute error isn't
-# more than 3x worse with flash attention.
-def check(ref_out, jax_out, out, margin=4):
-    def check1(ref_out, jax_out, out):
-        assert (
-            jnp.max(jnp.abs(out - ref_out)).item()
-            <= margin * jnp.max(jnp.abs(jax_out - ref_out)).item()
-        ), (pretty(jnp.abs(out - ref_out)), "vs", pretty(jnp.abs(jax_out - ref_out)))
-
-    tree_map(check1, ref_out, jax_out, out)
 
 
 @pytest.mark.parametrize("seqused_k_limit", [None, 4])
