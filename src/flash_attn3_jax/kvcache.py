@@ -334,15 +334,23 @@ def flash_mha_with_kvcache(
         v_cache: Value cache tensor. Shape depends on paging mode:
             - Contiguous: (batch_cache, seqlen_cache, num_heads_k, head_dim)
             - Paged: (num_blocks, page_size, num_heads_k, head_dim)
-        k: Optional new keys to append to cache, shape (batch, seqlen_new, num_heads_k, head_dim)
-        v: Optional new values to append to cache, shape (batch, seqlen_new, num_heads_k, head_dim)
-        cache_seqlens: Sequence lengths of the KV cache. Can be:
-            - int: Same sequence length for all batch items
-            - ndarray of shape (batch,): Per-batch sequence lengths
+        k: Optional new keys to include in attention computation, shape (batch, seqlen_new, num_heads_k, head_dim)
+            Attention is computed over concatenation of k_cache and k_new (cache is NOT mutated)
+        v: Optional new values to include in attention computation, shape (batch, seqlen_new, num_heads_k, head_dim)
+            Attention is computed over concatenation of v_cache and v_new (cache is NOT mutated)
+        cache_seqlens: End position of valid data in the KV cache. Can be:
+            - int: Same end position for all batch items
+            - ndarray of shape (batch,): Per-batch end positions
             - None: Use full cache size
+            Note: When used with cache_leftpad, the valid region is [cache_leftpad, cache_seqlens).
+                  The length of valid data is (cache_seqlens - cache_leftpad).
+            IMPORTANT: When providing new K/V (k and v parameters), the kernel requires
+                  cache_seqlens + seqlen_new <= cache_size due to internal implementation.
+                  This is a kernel limitation unrelated to cache mutation.
         cache_batch_idx: Optional indices to map query batch to cache batch,
             shape (batch,). If None, assumes identity mapping.
-        cache_leftpad: Optional left padding for each cache sequence, shape (batch,)
+        cache_leftpad: Optional start position of valid data for each cache sequence, shape (batch,).
+            Valid data is in the range [cache_leftpad, cache_seqlens).
         page_table: Optional page table for paged KV cache, shape (batch, max_num_pages_per_seq).
             Each entry contains the block index in the block pool for that sequence.
             If None, uses contiguous KV cache.
@@ -365,9 +373,11 @@ def flash_mha_with_kvcache(
         - This function does NOT support backward pass (forward-only inference)
         - Supports Multi-Query Attention (MQA) and Grouped-Query Attention (GQA)
         - Only supports float16 and bfloat16 dtypes
-        - The KV cache is NOT modified in-place (unlike PyTorch version).
-          If you pass k and v, they conceptually extend the cache for attention
-          computation, but the cache tensor itself is not mutated.
+        - The KV cache is NOT modified (JAX arrays are immutable). When you provide k and v,
+          attention is computed over the concatenation of cache and new K/V, but the cache
+          tensor itself is never mutated.
+        - When providing new K/V with cache_seqlens, ensure cache_seqlens + seqlen_new <= cache_size
+          due to internal kernel requirements (the kernel needs space for temporary writes).
     """
     assert len(q.shape) == 4, "q must have shape (batch, seqlen_q, num_heads, head_dim)"
     assert len(k_cache.shape) == 4, (
@@ -406,6 +416,28 @@ def flash_mha_with_kvcache(
         cache_seqlens = jnp.full((batch_size,), cache_seqlens, dtype=jnp.int32)
     elif cache_seqlens is not None:
         cache_seqlens = jnp.asarray(cache_seqlens, dtype=jnp.int32)
+
+    # Validate that new K/V fit within cache bounds when using cache_seqlens
+    # Even though JAX arrays are immutable, the CUDA kernel internally writes new K/V
+    # to the cache tensor starting at position cache_seqlens (for rotary embeddings, etc).
+    # This requires cache_seqlens + seqlen_new <= cache_size to avoid out-of-bounds access.
+    if k is not None and cache_seqlens is not None:
+        seqlen_new = k.shape[1]
+        max_cache_size = k_cache.shape[1]
+        max_end_pos = (
+            jnp.max(cache_seqlens).item()
+            if hasattr(cache_seqlens, "shape")
+            else cache_seqlens
+        )
+
+        if max_end_pos + seqlen_new > max_cache_size:
+            raise ValueError(
+                f"Invalid cache configuration: cache_seqlens ({max_end_pos}) + seqlen_new ({seqlen_new}) "
+                f"= {max_end_pos + seqlen_new} exceeds cache size ({max_cache_size}). "
+                f"The CUDA kernel requires cache_seqlens + seqlen_new <= cache_size to avoid "
+                f"out-of-bounds memory access during computation. This is a kernel limitation, "
+                f"not related to cache mutation (JAX arrays remain immutable)."
+            )
 
     if softmax_scale is None:
         softmax_scale = 1.0 / math.sqrt(q.shape[-1])
