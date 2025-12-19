@@ -30,6 +30,7 @@ var/
 
 # Dev
 venv
+.venv
 env
 .tup
 tup.config
