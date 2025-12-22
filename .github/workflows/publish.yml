@@ -17,13 +17,16 @@ jobs:
     container:
       image: nvidia/cuda:12.4.0-devel-ubuntu22.04
     steps:
+      - name: Install Git
+        run: |
+          apt-get update
+          apt-get install -y git
       - uses: actions/checkout@v4
         with:
           submodules: recursive  # Important: fetch CUTLASS submodule
       - name: Install system dependencies
         run: |
-          apt-get update
-          apt-get install -y python3.11 python3.11-venv python3-pip git
+          apt-get install -y python3.11 python3.11-venv python3-pip
           update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
       - name: Install uv
         run: |
