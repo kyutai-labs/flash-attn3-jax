@@ -50,8 +50,7 @@ jobs:
         with:
           name: cibw-wheels-${{ matrix.python }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
-
-  # Publish to TestPyPI (for testing)
+# Publish to TestPyPI (for testing)
   publish-testpypi:
     name: Publish to TestPyPI
     needs: [build_wheels]
@@ -62,12 +61,13 @@ jobs:
       name: testpypi
       url: https://test.pypi.org/p/flash-attn3-jax
     permissions:
-      id-token: write  # Required for trusted publishing
+      id-token: write
     steps:
-      - name: Download wheel
+      - name: Download all wheels
         uses: actions/download-artifact@v4
         with:
-          name: wheel
+          pattern: cibw-wheels-*
+          merge-multiple: true
           path: dist/
       - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -85,12 +85,13 @@ jobs:
       name: pypi
       url: https://pypi.org/p/flash-attn3-jax
     permissions:
-      id-token: write  # Required for trusted publishing
+      id-token: write
     steps:
-      - name: Download wheel
+      - name: Download all wheels
         uses: actions/download-artifact@v4
         with:
-          name: wheel
+          pattern: cibw-wheels-*
+          merge-multiple: true
           path: dist/
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
