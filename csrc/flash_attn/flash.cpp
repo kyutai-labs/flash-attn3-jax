@@ -333,7 +333,7 @@ void run_mha_fwd_constexpr(Flash_fwd_params &params, cudaStream_t stream) {
       }
 #endif
 #else
-      FFI_CHECK(false) << "This flash attention build does not support FP16.";
+      throw std::runtime_error("This flash attention build does not support FP16.");
 #endif
     }
   } else {
@@ -377,7 +377,7 @@ void run_mha_fwd_constexpr(Flash_fwd_params &params, cudaStream_t stream) {
     }
 #endif
 #else
-    FFI_CHECK(false) << "This flash attention build does not support FP8.";
+    throw std::runtime_error("This flash attention build does not support FP8.");
 #endif
   }
 }
