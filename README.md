@@ -20,9 +20,19 @@ This library provides JAX bindings of [FlashAttention 3](https://github.com/Dao-
 
 ## Installation
 
+### From PyPI
+
+Pre-built wheels are available for Linux x86_64 with CUDA 12.4+ and Python 3.11/3.12:
+
+```bash
+pip install flash-attn3-jax
+```
+
+The published wheels are built for **Hopper (SM90)** architecture with **head dimension 128** only. For other configurations, build from source.
+
 ### Building from Source
 
-Currently, only source builds are available. Use the `uv` build system:
+For custom configurations or other GPU architectures, build from source using `uv`:
 
 ```bash
 # Basic build
@@ -32,12 +42,12 @@ uv build --wheel
 CMAKE_BUILD_PARALLEL_LEVEL=32 uv build --wheel
 
 # Install the wheel
-pip install dist/flash_attn3_jax_*.whl
+uv pip install dist/flash_attn3_jax_*.whl
 ```
 
 #### Advanced Build Options
 
-Advances build options are available, see default values in the `pyproject.toml`:
+Advanced build options are available, see default values in the `pyproject.toml`:
 
 ```bash
 # Target specific GPU architectures
