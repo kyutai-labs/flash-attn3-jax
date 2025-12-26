@@ -474,7 +474,3 @@ target_link_options(flash_api PRIVATE)
 install(TARGETS flash_api
         DESTINATION ${SKBUILD_PLATLIB_DIR}/flash_attn3_jax_lib
 )
-install(DIRECTORY src/flash_attn_jax/
-        DESTINATION ${SKBUILD_PLATLIB_DIR}/flash_attn3_jax
-        FILES_MATCHING PATTERN "*.py"
-)
