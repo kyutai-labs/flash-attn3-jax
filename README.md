@@ -11,8 +11,8 @@ This library provides JAX bindings of [FlashAttention 3](https://github.com/Dao-
 
 - **CUDA**: 12.3 or higher
 - **OS**: Linux
-- **JAX**: >= 0.5.0 and <= 0.7.0
-  - Version 0.5.0+ required for the new FFI custom call API
+- **JAX**: >= 0.6.0 and <= 0.7.0
+  - Version 0.6.0+ required for the new FFI custom call API
   - Version 0.7.0 limit due to XLA changes affecting ring attention (0.7.1 disabled mixed-precision collective permute operations cf this [issue](https://github.com/jax-ml/jax/issues/32148))
   - Higher JAX versions may work if you don't use ring attention
 
