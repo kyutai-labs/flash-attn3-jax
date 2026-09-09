@@ -101,3 +101,6 @@ FLASHATTENTION_ENABLE_VCOLMAJOR = { env = "FLASHATTENTION_ENABLE_VCOLMAJOR", def
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"
 input = "src/flash_attn3_jax/__init__.py"
+
+[tool.uv]
+exclude-newer = "7 days"
